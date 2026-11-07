@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Quiz en vivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:Montserrat,system-ui,sans-serif;background:#46178f;color:#fff;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;background:
+ radial-gradient(circle at 15% 20%,rgba(255,255,255,.07) 0 120px,transparent 121px),
+ radial-gradient(circle at 85% 75%,rgba(0,0,0,.12) 0 180px,transparent 181px),
+ radial-gradient(circle at 90% 10%,rgba(255,255,255,.05) 0 90px,transparent 91px);pointer-events:none;z-index:-1}
+#app{min-height:100%;display:flex;flex-direction:column}
+button{font-family:inherit;cursor:pointer;border:0}
+.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:16px;text-align:center}
+.logo{font-weight:900;font-size:clamp(40px,9vw,72px);letter-spacing:-2px;text-shadow:0 4px 0 rgba(0,0,0,.25)}
+.logo span{color:#ffd23f}
+.card{background:#fff;color:#333;border-radius:8px;padding:20px;width:100%;max-width:380px;box-shadow:0 4px 0 rgba(0,0,0,.25);display:flex;flex-direction:column;gap:12px}
+.input{font-family:inherit;font-size:20px;font-weight:800;text-align:center;padding:14px;border:2px solid #ccc;border-radius:6px;width:100%;color:#333}
+.input:focus{outline:none;border-color:#46178f}
+.btn{background:#333;color:#fff;font-size:18px;font-weight:800;padding:14px 22px;border-radius:6px;box-shadow:0 4px 0 rgba(0,0,0,.35);transition:transform .05s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.35)}
+.btn[disabled]{opacity:.45;cursor:default}
+.btn.white{background:#fff;color:#46178f}
+.btn.green{background:#26890c}
+.btn.purple{background:#46178f}
+.btn.small{font-size:14px;padding:9px 14px}
+.link{background:none;color:#fff;text-decoration:underline;font-weight:700;font-size:14px;opacity:.85}
+.muted{opacity:.8;font-weight:600}
+.err{color:#e21b3c;font-weight:700;font-size:14px}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:rgba(0,0,0,.18);font-weight:800;gap:10px}
+.pill{background:#fff;color:#333;border-radius:4px;padding:4px 10px;font-weight:800}
+/* host lobby */
+.pinbar{background:#fff;color:#333;display:flex;justify-content:center;align-items:center;gap:22px;padding:14px;flex-wrap:wrap}
+.pinbar .lab{font-weight:700;font-size:18px;line-height:1.2;text-align:left}
+.pinbar .pin{font-size:clamp(44px,8vw,80px);font-weight:900;letter-spacing:2px}
+.lobby-mid{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;gap:12px}
+.count{background:rgba(0,0,0,.3);border-radius:6px;padding:8px 14px;font-weight:900;font-size:22px}
+.chips{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;padding:10px 20px 30px}
+.chip{background:rgba(0,0,0,.28);padding:10px 18px;border-radius:6px;font-weight:800;font-size:20px;animation:pop .3s}
+.chip.off{opacity:.4}
+@keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+/* question host */
+.qhead{background:#fff;color:#333;margin:16px;border-radius:6px;padding:18px 22px;font-size:clamp(20px,3.4vw,40px);font-weight:800;text-align:center;box-shadow:0 4px 0 rgba(0,0,0,.2)}
+.qmid{flex:1;display:flex;align-items:center;justify-content:space-between;padding:0 24px;gap:16px;min-height:140px}
+.timer{width:clamp(80px,12vw,130px);height:clamp(80px,12vw,130px);border-radius:50%;background:#864cbf;display:flex;align-items:center;justify-content:center;font-size:clamp(34px,5vw,56px);font-weight:900}
+.anscount{text-align:center;font-weight:800}
+.anscount b{display:block;font-size:clamp(34px,5vw,56px);font-weight:900}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
+.opt{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:6px;font-weight:800;font-size:clamp(16px,2.4vw,28px);min-height:clamp(64px,11vh,120px);text-align:left;box-shadow:0 4px 0 rgba(0,0,0,.25);color:#fff;position:relative}
+.opt svg{flex:none;width:clamp(26px,3.6vw,44px);height:clamp(26px,3.6vw,44px)}
+.opt.dim{opacity:.3}
+.opt .tick{margin-left:auto;font-size:1.3em}
+.c0{background:#e21b3c}.c1{background:#1368ce}.c2{background:#d89e00}.c3{background:#26890c}
+.bars{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:clamp(12px,3vw,40px);padding:10px 24px;min-height:200px}
+.bar{width:clamp(56px,10vw,120px);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.bar .fill{width:100%;border-radius:4px 4px 0 0;min-height:6px;transition:height .6s}
+.bar .lbl{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px;font-weight:900;font-size:22px;border-radius:0 0 4px 4px}
+.bar .lbl svg{width:22px;height:22px}
+.bar.dim{opacity:.35}
+.hostnav{display:flex;justify-content:flex-end;gap:10px;padding:12px 16px}
+.pre{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:24px;text-align:center}
+.pre .qt{background:#fff;color:#333;border-radius:6px;padding:24px 30px;font-size:clamp(24px,4vw,48px);font-weight:800;max-width:1100px;animation:pop .4s}
+.prog{width:min(600px,80vw);height:10px;background:rgba(255,255,255,.25);border-radius:5px;overflow:hidden}
+.prog i{display:block;height:100%;background:#fff;width:0}
+/* leaderboard */
+.lb{display:flex;flex-direction:column;gap:10px;width:100%;max-width:800px;margin:0 auto;padding:16px}
+.lbrow{display:flex;justify-content:space-between;align-items:center;background:#fff;color:#333;border-radius:6px;padding:14px 20px;font-size:clamp(18px,2.6vw,28px);font-weight:800;animation:pop .35s both}
+.lbrow:first-child{background:#ffd23f}
+.title{font-size:clamp(28px,5vw,52px);font-weight:900;text-align:center;padding:18px;text-shadow:0 3px 0 rgba(0,0,0,.25)}
+/* podium */
+.podium{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:clamp(8px,2vw,20px);padding:0 16px}
+.pcol{display:flex;flex-direction:column;align-items:center;width:clamp(100px,22vw,220px)}
+.pname{font-weight:900;font-size:clamp(16px,2.6vw,30px);margin-bottom:8px;text-align:center;word-break:break-word;animation:pop .5s both}
+.pblock{width:100%;background:#864cbf;border-radius:6px 6px 0 0;display:flex;flex-direction:column;align-items:center;padding-top:14px;font-weight:900;box-shadow:inset 0 -6px 0 rgba(0,0,0,.15)}
+.pblock .medal{font-size:clamp(36px,6vw,64px)}
+.pblock .pts{font-size:clamp(14px,2vw,22px);margin-top:6px}
+/* player */
+.pgrid{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}
+.pgrid.two{grid-template-columns:1fr}
+.pbtn{border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;font-weight:800;font-size:16px;padding:12px;box-shadow:0 5px 0 rgba(0,0,0,.25);min-height:120px}
+.pbtn svg{width:56px;height:56px}
+.pbtn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.feedback{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px}
+.feedback.ok{background:#66bf39}
+.feedback.bad{background:#ff3355}
+.feedback h2{font-size:34px;font-weight:900}
+.feedback .big{font-size:64px}
+.ptsbox{background:rgba(0,0,0,.25);padding:10px 22px;border-radius:6px;font-weight:900;font-size:24px}
+.spinner{width:52px;height:52px;border:6px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* setup */
+.setup{width:100%;max-width:720px;margin:0 auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.qlist{background:#fff;color:#333;border-radius:8px;max-height:46vh;overflow:auto}
+.qitem{padding:10px 14px;border-bottom:1px solid #eee;font-size:14px;text-align:left}
+.qitem b{display:block;font-size:15px;margin-bottom:4px}
+.qitem .okans{color:#26890c;font-weight:700}
+textarea.input{font-size:13px;font-weight:500;text-align:left;min-height:140px;font-family:ui-monospace,monospace}
+.howto{background:rgba(0,0,0,.22);border-radius:8px;padding:14px;font-size:14px;line-height:1.5;text-align:left}
+.howto code{background:rgba(255,255,255,.15);padding:2px 5px;border-radius:3px;word-break:break-all;font-size:12px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ============ PREGUNTAS ============
+   Formato: {q:"pregunta", time:segundos, o:["op1","op2",...], ok:[índices correctos]} */
+const DEFAULT_QUIZ = {"title": "Cultura General 25 años", "questions": [{"q": "¿Cuál es la capital de Australia?", "time": 20, "o": ["Sídney", "Canberra", "Melbourne", "Perth"], "ok": [1]}, {"q": "¿Qué planeta es conocido como el planeta rojo?", "time": 20, "o": ["Venus", "Júpiter", "Marte", "Mercurio"], "ok": [2]}, {"q": "¿Cuántos lados tiene un hexágono?", "time": 20, "o": ["Cinco", "Seis", "Siete", "Ocho"], "ok": [1]}, {"q": "¿Quién escribió «Don Quijote de la Mancha»?", "time": 20, "o": ["Federico García Lorca", "Miguel de Cervantes", "Lope de Verga", "Benitio Pérez Galdós"], "ok": [0]}, {"q": "¿Cuál es el océano más grande del mundo?", "time": 20, "o": ["Atlántico", "Índico", "Ártico", "Pacífico"], "ok": [3]}, {"q": "¿Qué gas absorben principalmente las plantas durante la fotosíntesis?", "time": 20, "o": ["Oxígeno", "Dióxido de carbono", "Nitrógeno", "Hidrógeno"], "ok": [1]}, {"q": "¿En qué país se encuentra la ciudad de Kioto?", "time": 20, "o": ["China", "Corea del Sur", "Japón", "Tailandia"], "ok": [2]}, {"q": "¿Cuántos jugadores por equipo hay en pista al comenzar un partido de baloncesto?", "time": 20, "o": ["Cinco", "Seis", "Siete", "Once"], "ok": [0]}, {"q": "¿Qué instrumento tiene normalmente 88 teclas?", "time": 20, "o": ["Violín", "Piano", "Acordeón", "Arpa"], "ok": [1]}, {"q": "¿Cuál es el símbolo químico del oro?", "time": 20, "o": ["Ag", "Au", "Fe", "Go"], "ok": [1]}, {"q": "¿En qué continente está el desierto del Sáhara?", "time": 20, "o": ["Asia", "América", "África", "Oceanía"], "ok": [2]}, {"q": "¿Qué órgano bombea la sangre por el cuerpo?", "time": 20, "o": ["Pulmón", "Hígado", "Riñón", "Corazón"], "ok": [3]}, {"q": "¿Cuál de estas películas está protagonizada por un personaje llamado Forrest Gump?", "time": 20, "o": ["Forrest Gump", "Rocky", "Gladiator", "Náufrago"], "ok": [0]}, {"q": "¿Qué idioma tiene más hablantes nativos en el mundo, según las estimaciones habituales?", "time": 20, "o": ["Inglés", "Español", "Chino mandarín", "Hindi"], "ok": [2]}, {"q": "¿En qué deporte se disputa el torneo de Wimbledon?", "time": 20, "o": ["Golf", "Tenis", "Críquet", "Rugby"], "ok": [1]}, {"q": "¿Qué país tiene forma aproximada de bota?", "time": 20, "o": ["Grecia", "Portugal", "Italia", "Croacia"], "ok": [2]}, {"q": "¿Cuántos minutos tiene una hora y media?", "time": 20, "o": ["60", "75", "90", "120"], "ok": [2]}, {"q": "¿Cuál es el mamífero más grande del mundo?", "time": 20, "o": ["Elefante africano", "Ballena azul", "Jirafa", "Orca"], "ok": [1]}, {"q": "¿Qué artista pintó la Mona Lisa?", "time": 20, "o": ["Vincent van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Claude Monet"], "ok": [2]}, {"q": "¿Cuál es la moneda oficial de Japón?", "time": 20, "o": ["Yuan", "Won", "Yen", "Baht"], "ok": [2]}, {"q": "¿Qué parte de la célula contiene normalmente la mayor parte del ADN?", "time": 20, "o": ["Núcleo", "Membrana", "Ribosoma", "Citoplasma"], "ok": [0]}, {"q": "¿En qué saga aparece el personaje Darth Vader?", "time": 20, "o": ["Star Trek", "Star Wars", "Dune", "Matrix"], "ok": [1]}, {"q": "¿Cuál es el río que atraviesa París?", "time": 20, "o": ["Támesis", "Rin", "Sena", "Danubio"], "ok": [2]}, {"q": "¿Qué vitamina produce el cuerpo con ayuda de la luz solar?", "time": 20, "o": ["Vitamina A", "Vitamina B12", "Vitamina C", "Vitamina D"], "ok": [3]}, {"q": "¿Cuántos anillos aparecen en el símbolo olímpico?", "time": 20, "o": ["Cuatro", "Cinco", "Seis", "Siete"], "ok": [1]}, {"q": "¿Cuál es el país de origen del sushi moderno?", "time": 20, "o": ["China", "Japón", "Vietnam", "Corea del Sur"], "ok": [1]}, {"q": "¿Qué científico formuló las leyes clásicas del movimiento y la gravitación universal?", "time": 20, "o": ["Albert Einstein", "Galileo Galilei", "Isaac Newton", "Nikola Tesla"], "ok": [2]}, {"q": "¿Cuál es la capital de Canadá?", "time": 20, "o": ["Toronto", "Vancouver", "Montreal", "Ottawa"], "ok": [3]}, {"q": "¿Qué animal es conocido por cambiar de color para camuflarse?", "time": 20, "o": ["Camaleón", "Koala", "Castor", "Pingüino"], "ok": [0]}, {"q": "¿En qué continente se encuentra el río Amazonas?", "time": 20, "o": ["África", "América del Sur", "Asia", "Europa"], "ok": [1]}, {"q": "¿Qué banda publicó el álbum «Abbey Road»?", "time": 20, "o": ["The Rolling Stones", "Queen", "The Beatles", "Pink Floyd"], "ok": [2]}, {"q": "¿Cuál es el resultado de 12 × 8?", "time": 20, "o": ["86", "92", "96", "108"], "ok": [2]}, {"q": "¿Qué metal es líquido a temperatura ambiente habitual?", "time": 20, "o": ["Hierro", "Mercurio", "Aluminio", "Cobre"], "ok": [1]}, {"q": "¿Qué país ganó la Copa Mundial masculina de fútbol de 2018?", "time": 20, "o": ["Brasil", "Alemania", "Argentina", "Francia"], "ok": [3]}, {"q": "¿Qué capa de la Tierra se encuentra directamente bajo la corteza?", "time": 20, "o": ["Núcleo interno", "Manto", "Núcleo externo", "Atmósfera"], "ok": [1]}, {"q": "¿Qué tratado puso formalmente fin a la guerra entre Alemania y los Aliados tras la Primera Guerra Mundial?", "time": 30, "o": ["Tratado de Utrecht", "Tratado de Versalles", "Tratado de Tordesillas", "Tratado de París de 1783"], "ok": [1]}, {"q": "¿Qué elemento químico tiene el número atómico 74?", "time": 30, "o": ["Renio", "Tantalio", "Wolframio (tungsteno)", "Osmio"], "ok": [2]}, {"q": "¿Qué matemático es conocido por el teorema de incompletitud publicado en 1931?", "time": 30, "o": ["David Hilbert", "Kurt Gödel", "Bernhard Riemann", "Alan Turing"], "ok": [1]}, {"q": "¿Cuál de estas lunas de Saturno posee una densa atmósfera rica en nitrógeno?", "time": 30, "o": ["Europa", "Ío", "Titán", "Encélado"], "ok": [2]}, {"q": "¿Qué civilización desarrolló el sistema de escritura Lineal B, usado para registrar una forma antigua del griego?", "time": 30, "o": ["Minoica", "Micénica", "Fenicia", "Etrusca"], "ok": [1]}]};
+
+const COLORS=['#e21b3c','#1368ce','#d89e00','#26890c'];
+const SHAPES=[
+ '<svg viewBox="0 0 32 32"><path fill="#fff" d="M16 3 30 28H2z"/></svg>',
+ '<svg viewBox="0 0 32 32"><path fill="#fff" d="M16 1 31 16 16 31 1 16z"/></svg>',
+ '<svg viewBox="0 0 32 32"><circle fill="#fff" cx="16" cy="16" r="14"/></svg>',
+ '<svg viewBox="0 0 32 32"><rect fill="#fff" x="3" y="3" width="26" height="26" rx="2"/></svg>'
+];
+const $app=document.getElementById('app');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const now=()=>performance.now();
+const IN_CLAUDE=!!(window.claude&&typeof window.claude.use==='function');
+const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+let QUIZ=DEFAULT_QUIZ;
+try{const s=ls.get('quiz20.quiz');if(s){const j=JSON.parse(s);if(j&&j.questions&&j.questions.length)QUIZ=j;}}catch(e){}
+
+/* ============ TRANSPORTE ============ */
+let _room;
+function getRoom(){ if(!IN_CLAUDE) return Promise.resolve(null); if(!_room) _room=window.claude.use('room'); return _room; }
+let _user;
+function getUser(){ if(!IN_CLAUDE) return Promise.resolve(null); if(!_user) _user=window.claude.use('user'); return _user; }
+if(IN_CLAUDE){ getRoom(); getUser(); }
+
+function loadPeerJS(){return new Promise((res,rej)=>{if(window.Peer)return res();const s=document.createElement('script');s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';s.onload=res;s.onerror=()=>rej(new Error('peerjs'));document.head.appendChild(s);});}
+const PEER_PREFIX='quiz20-live-';
+
+async function hostTransport(pin,h){
+  if(IN_CLAUDE){
+    const room=await getRoom(); if(!room) throw new Error('noroom');
+    const r=await room.join('q20-'+pin);
+    r.onPeers(ch=>{
+      for(const p of [...ch.joined,...ch.updated]){ if(p.sameTab||p.kind!=='viewer') continue; h.onUpdate(p.peer,p.presence||{}); }
+      for(const p of ch.left){ if(!p.sameTab) h.onLeave(p.peer); }
+    });
+    return {send:st=>r.emit('st',st).catch(()=>{}), close:()=>r.leave().catch(()=>{})};
+  }
+  await loadPeerJS();
+  const peer=new Peer(PEER_PREFIX+pin);
+  await new Promise((res,rej)=>{peer.on('open',res);peer.on('error',rej);});
+  const conns=new Map(); let last=null;
+  peer.on('connection',c=>{
+    c.on('open',()=>{conns.set(c.peer,c); if(last) try{c.send(last)}catch(e){}});
+    c.on('data',d=>{conns.set(c.peer,c); if(d&&d.p) h.onUpdate(c.peer,d.p);});
+    c.on('close',()=>{conns.delete(c.peer); h.onLeave(c.peer);});
+    c.on('error',()=>{});
+  });
+  peer.on('disconnected',()=>{try{peer.reconnect()}catch(e){}});
+  return {send:st=>{last=st;for(const c of conns.values()) if(c.open) try{c.send(st)}catch(e){}}, close:()=>peer.destroy()};
+}
+
+async function playerTransport(pin,h){
+  if(IN_CLAUDE){
+    const room=await getRoom(); if(!room) throw new Error('noroom');
+    const r=await room.join('q20-'+pin);
+    let myId=null;
+    r.onPeers(ch=>{const me=ch.peers.find(p=>p.sameTab); if(me) myId=me.peer;});
+    r.on('st',m=>h.onState(m.data));
+    r.onConnection(c=>h.onConn(c));
+    return {id:()=>myId, set:p=>r.presence(p).catch(()=>{})};
+  }
+  await loadPeerJS();
+  const peer=new Peer();
+  await new Promise((res,rej)=>{peer.on('open',res);peer.on('error',rej);});
+  let pres={}, conn=null;
+  const connect=()=>{
+    conn=peer.connect(PEER_PREFIX+pin,{reliable:true});
+    conn.on('open',()=>{h.onConn(true); conn.send({p:pres});});
+    conn.on('data',d=>h.onState(d));
+    conn.on('close',()=>{h.onConn(false); setTimeout(connect,2000);});
+  };
+  peer.on('error',e=>{ if(e.type==='peer-unavailable') h.onFail&&h.onFail(); });
+  connect();
+  return {id:()=>peer.id, set:p=>{Object.assign(pres,p); if(conn&&conn.open) try{conn.send({p:pres})}catch(e){}}};
+}
+
+/* ============ IMPORTADOR ============ */
+function stripHtml(s){const d=document.createElement('div');d.innerHTML=String(s??'').replace(/<br\s*\/?>/gi,' ');return (d.textContent||'').replace(/\s+/g,' ').trim();}
+function parseQuiz(txt){
+  txt=txt.trim();
+  const a=txt.indexOf('{'), b=txt.indexOf('[');
+  const start=(a<0)?b:(b<0?a:Math.min(a,b));
+  if(start>0) txt=txt.slice(start);
+  let j=JSON.parse(txt);
+  if(j&&j.kahoot) j=j.kahoot;
+  let qs=Array.isArray(j)?j:j.questions;
+  if(!Array.isArray(qs)) throw new Error('No encuentro la lista de preguntas');
+  const out=[];
+  for(const q of qs){
+    if(q.choices){ // formato API de Kahoot
+      if(q.type && !['quiz','true_false','multiple_select_quiz'].includes(q.type)) continue;
+      const ch=q.choices.filter(c=>c&&(c.answer!=null)).slice(0,4);
+      if(ch.length<2) continue;
+      out.push({q:stripHtml(q.question)||'(pregunta con imagen)', time:Math.max(5,Math.round((q.time||20000)/1000)), o:ch.map(c=>stripHtml(c.answer)), ok:ch.map((c,i)=>c.correct?i:-1).filter(i=>i>=0)});
+    } else if(q.o||q.options){
+      const o=(q.o||q.options).slice(0,4).map(String);
+      let ok=q.ok??q.correct??[0]; if(!Array.isArray(ok)) ok=[ok];
+      out.push({q:String(q.q||q.question||''), time:+(q.time||20), o, ok:ok.map(Number)});
+    }
+  }
+  if(!out.length) throw new Error('No he encontrado preguntas de tipo quiz');
+  return {title:stripHtml(j.title||'Quiz')||'Quiz', questions:out};
+}
+
+/* ============ INICIO ============ */
+async function home(){
+  let canHost=true;
+  if(IN_CLAUDE){ const u=await getUser(); if(u){ try{canHost=!!(u.canEdit()||u.isOwner());}catch(e){} } }
+  $app.innerHTML=`<div class="center">
+    <div class="logo">Quiz<span>!</span></div>
+    <div class="card">
+      <input class="input" id="pin" inputmode="numeric" maxlength="6" placeholder="PIN del juego">
+      <input class="input" id="nick" maxlength="15" placeholder="Apodo">
+      <button class="btn" id="go">Entrar</button>
+      <div class="err" id="err"></div>
+    </div>
+    ${canHost?`<button class="link" id="host">Soy el anfitrión → crear partida</button>`:''}
+  </div>`;
+  const pin=document.getElementById('pin'), nick=document.getElementById('nick');
+  nick.value=ls.get('quiz20.nick')||'';
+  document.getElementById('go').onclick=()=>{
+    const p=pin.value.replace(/\D/g,''), n=nick.value.trim();
+    const e=document.getElementById('err');
+    if(p.length!==6){e.textContent='El PIN tiene 6 cifras';return;}
+    if(!n){e.textContent='Escribe un apodo';return;}
+    ls.set('quiz20.nick',n); playerJoin(p,n);
+  };
+  pin.onkeydown=nick.onkeydown=ev=>{if(ev.key==='Enter')document.getElementById('go').click();};
+  const hb=document.getElementById('host'); if(hb) hb.onclick=hostSetup;
+}
+
+/* ============ ANFITRIÓN ============ */
+function hostSetup(){
+  const qs=QUIZ.questions;
+  $app.innerHTML=`<div class="setup">
+    <div class="logo" style="text-align:center">Quiz<span>!</span></div>
+    <div style="text-align:center;font-weight:800;font-size:22px">${esc(QUIZ.title)} · ${qs.length} preguntas</div>
+    <button class="btn green" id="create">Crear partida</button>
+    <div class="qlist">${qs.map((q,i)=>`<div class="qitem"><b>${i+1}. ${esc(q.q)}</b>${q.o.map((o,k)=>q.ok.includes(k)?`<span class="okans">✔ ${esc(o)}</span>`:esc(o)).join(' · ')} <span style="opacity:.6">(${q.time}s)</span></div>`).join('')}</div>
+    <button class="btn white small" id="imp">Importar preguntas de Kahoot</button>
+    <div id="impbox" class="hidden" style="display:flex;flex-direction:column;gap:10px">
+      <div class="howto">1. Abre en el navegador:<br><code id="apiurl">https://create.kahoot.it/rest/kahoots/ID-DEL-KAHOOT</code><br>
+      (el ID es el código largo del final de tu enlace, p. ej. <code>5deac320-4418-4127-82f3-4ae1c8c8e027</code>)<br>
+      2. Selecciona todo el texto que aparece, cópialo y pégalo aquí abajo.<br>
+      <span style="opacity:.8">También acepta una lista JSON propia con {q, time, o, ok}.</span></div>
+      <textarea class="input" id="json" placeholder="Pega aquí el texto copiado…"></textarea>
+      <button class="btn purple" id="load">Cargar preguntas</button>
+      <div class="err" id="ierr" style="color:#ffd23f"></div>
+    </div>
+    <button class="link" id="back">← Volver</button>
+  </div>`;
+  document.getElementById('imp').onclick=()=>document.getElementById('impbox').classList.toggle('hidden');
+  document.getElementById('back').onclick=home;
+  document.getElementById('load').onclick=()=>{
+    try{ QUIZ=parseQuiz(document.getElementById('json').value); ls.set('quiz20.quiz',JSON.stringify(QUIZ)); hostSetup(); }
+    catch(e){ document.getElementById('ierr').textContent='No he podido leerlo: '+e.message; }
+  };
+  document.getElementById('create').onclick=hostCreate;
+}
+
+const H={};
+const normKey=s=>s.trim().toLowerCase();
+async function hostCreate(){
+  Object.assign(H,{players:new Map(),scores:new Map(),answers:new Map(),phase:'lobby',qi:-1,seq:0,lastSend:0,pending:false});
+  $app.innerHTML=`<div class="center"><div class="spinner"></div><div class="muted">Creando partida…</div></div>`;
+  for(let tries=0;tries<4;tries++){
+    H.pin=String(Math.floor(100000+Math.random()*900000));
+    try{ H.tx=await hostTransport(H.pin,{onUpdate:hostOnUpdate,onLeave:hostOnLeave}); break; }
+    catch(e){ if(tries===3||(e&&e.message==='noroom')){ $app.innerHTML=`<div class="center"><div class="title">No se pudo abrir la sala</div><div class="muted">Revisa tu conexión y vuelve a intentarlo.</div><button class="btn white" onclick="location.reload()">Reintentar</button></div>`; return; } }
+  }
+  clearInterval(H.tick); clearInterval(H.bc);
+  H.tick=setInterval(hostTick,200);
+  H.bc=setInterval(()=>broadcast(true),1500);
+  renderHost(); broadcast(true);
+}
+function hostOnUpdate(id,pres){
+  const name=typeof pres.name==='string'?pres.name.trim().slice(0,15):'';
+  if(!name) return;
+  let pl=H.players.get(id);
+  if(!pl){
+    let key=normKey(name), disp=name, n=2;
+    const takenOnline=k=>[...H.players.entries()].some(([pid,p])=>pid!==id&&p.online&&p.key===k);
+    while(takenOnline(key)){ key=normKey(name)+'#'+n; disp=name+' '+n; n++; }
+    pl={key,online:true}; H.players.set(id,pl);
+    if(!H.scores.has(key)) H.scores.set(key,{name:disp,score:0,streak:0,last:null});
+  }
+  pl.online=true;
+  const a=pres.ans;
+  if(a&&H.phase==='q'&&a.q===H.qi&&!H.answers.has(pl.key)){
+    const q=QUIZ.questions[H.qi]; const c=+a.c;
+    if(c>=0&&c<q.o.length){ H.answers.set(pl.key,{c,t:now()-H.qStart}); }
+    const online=new Set([...H.players.values()].filter(p=>p.online).map(p=>p.key));
+    if(online.size&&[...online].every(k=>H.answers.has(k))) setTimeout(()=>{if(H.phase==='q')endQuestion();},600);
+  }
+  scheduleRender(); broadcast();
+}
+function hostOnLeave(id){const pl=H.players.get(id); if(pl) pl.online=false; scheduleRender();}
+
+function startGame(){ H.qi=-1; for(const s of H.scores.values()){s.score=0;s.streak=0;s.last=null;} nextQuestion(); }
+function nextQuestion(){
+  H.qi++;
+  if(H.qi>=QUIZ.questions.length){ H.phase='end'; }
+  else { H.phase='pre'; H.preEnd=now()+4000; }
+  renderHost(); broadcast(true);
+}
+function startAnswering(){
+  const q=QUIZ.questions[H.qi];
+  H.answers.clear(); H.phase='q'; H.limit=q.time; H.qStart=now(); H.qEnd=H.qStart+q.time*1000;
+  renderHost(); broadcast(true);
+}
+function endQuestion(){
+  const q=QUIZ.questions[H.qi];
+  for(const [key,s] of H.scores){
+    const a=H.answers.get(key);
+    if(a&&q.ok.includes(a.c)){
+      s.streak++;
+      const base=Math.round(1000*(1-Math.min(1,a.t/(H.limit*1000))/2));
+      const bonus=Math.min(Math.max(s.streak-1,0),5)*100;
+      s.last={pts:base+bonus,ok:1}; s.score+=base+bonus;
+    } else { s.streak=0; s.last={pts:0,ok:a?0:-1}; }
+  }
+  H.phase='res'; renderHost(); broadcast(true);
+}
+function ranking(){ return [...H.scores.entries()].sort((a,b)=>b[1].score-a[1].score); }
+function hostAdvance(){
+  if(H.phase==='res'){ if(H.qi>=QUIZ.questions.length-1){H.phase='end';renderHost();broadcast(true);} else {H.phase='lb';renderHost();broadcast(true);} }
+  else if(H.phase==='lb') nextQuestion();
+}
+function hostTick(){
+  if(H.phase==='pre'){ const el=document.getElementById('preprog'); if(el) el.style.width=Math.min(100,100*(1-(H.preEnd-now())/4000))+'%'; if(now()>=H.preEnd) startAnswering(); }
+  else if(H.phase==='q'){ const rem=Math.max(0,H.qEnd-now()); const el=document.getElementById('tmr'); if(el) el.textContent=Math.ceil(rem/1000); if(rem<=0) endQuestion(); }
+}
+function buildState(){
+  const q=QUIZ.questions[H.qi];
+  const st={s:++H.seq, ph:H.phase, qi:H.qi, qn:QUIZ.questions.length, pin:H.pin};
+  if(q&&(H.phase==='pre'||H.phase==='q'||H.phase==='res')) st.q={t:q.q,o:q.o};
+  if(H.phase==='q'){ st.rem=Math.max(0,Math.round(H.qEnd-now())); }
+  if(H.phase==='res'){ st.ok=q.ok; }
+  const rk=ranking(); const rankOf=new Map(rk.map(([k],i)=>[k,i+1]));
+  if(H.phase==='lb'||H.phase==='end') st.lb=rk.slice(0,5).map(([k,s])=>[s.name,s.score]);
+  st.me={};
+  for(const [id,pl] of H.players){ if(!pl.online) continue; const s=H.scores.get(pl.key);
+    st.me[id]=[s.name,s.score,rankOf.get(pl.key),s.last?s.last.pts:0,s.last?s.last.ok:-1,H.answers.has(pl.key)?1:0,s.streak,rk.length]; }
+  let js=JSON.stringify(st);
+  if(js.length>3800&&st.q){ st.q={o:st.q.o.map(()=>'')}; js=JSON.stringify(st); }
+  if(js.length>3800&&st.q){ delete st.q; }
+  return st;
+}
+function broadcast(force){
+  if(!H.tx) return;
+  const t=now();
+  if(!force&&t-H.lastSend<350){ if(!H.pending){H.pending=true;setTimeout(()=>{H.pending=false;broadcast(true);},360);} return; }
+  H.lastSend=t; H.tx.send(buildState());
+}
+let rq=false; function scheduleRender(){ if(rq) return; rq=true; requestAnimationFrame(()=>{rq=false;renderHost();}); }
+
+function optsHTML(q,dimFn,tickFn){
+  return `<div class="grid">${q.o.map((o,i)=>`<div class="opt c${i} ${dimFn&&dimFn(i)?'dim':''}">${SHAPES[i]}<span>${esc(o)}</span>${tickFn&&tickFn(i)?'<span class="tick">✔</span>':''}</div>`).join('')}</div>`;
+}
+function renderHost(){
+  const q=QUIZ.questions[H.qi];
+  const online=[...H.players.values()].filter(p=>p.online);
+  if(H.phase==='lobby'){
+    const names=[...H.players.values()].map(p=>({n:H.scores.get(p.key).name,on:p.online}));
+    $app.innerHTML=`
+      <div class="pinbar"><div class="lab">${IN_CLAUDE?'Abre este mismo enlace<br>y pulsa <b>Entrar</b>':'Entra en<br><b>'+esc(location.host+location.pathname)+'</b>'}</div><div><div class="lab" style="font-size:14px">PIN del juego:</div><div class="pin">${H.pin.slice(0,3)} ${H.pin.slice(3)}</div></div></div>
+      <div class="lobby-mid"><div class="count">👤 ${online.length}</div><div class="logo" style="font-size:36px">Quiz<span>!</span></div><button class="btn white" id="start" ${online.length?'':'disabled'}>Empezar</button></div>
+      <div class="chips">${names.length?names.map(x=>`<div class="chip ${x.on?'':'off'}">${esc(x.n)}</div>`).join(''):'<div class="muted" style="font-size:22px;padding:30px">Esperando jugadores…</div>'}</div>`;
+    document.getElementById('start').onclick=startGame;
+  } else if(H.phase==='pre'){
+    $app.innerHTML=`<div class="topbar"><span>${H.qi+1} de ${QUIZ.questions.length}</span><span>PIN ${H.pin}</span></div>
+      <div class="pre"><div class="qt">${esc(q.q)}</div><div class="prog"><i id="preprog"></i></div></div>`;
+  } else if(H.phase==='q'){
+    $app.innerHTML=`<div class="topbar"><span>${H.qi+1} de ${QUIZ.questions.length}</span><span>PIN ${H.pin}</span></div>
+      <div class="qhead">${esc(q.q)}</div>
+      <div class="qmid"><div class="timer" id="tmr">${Math.ceil(Math.max(0,H.qEnd-now())/1000)}</div>
+        <button class="btn white small" id="skip">Saltar</button>
+        <div class="anscount"><b>${H.answers.size}</b>Respuestas</div></div>
+      ${optsHTML(q)}`;
+    document.getElementById('skip').onclick=endQuestion;
+  } else if(H.phase==='res'){
+    const cnt=q.o.map((_,i)=>[...H.answers.values()].filter(a=>a.c===i).length);
+    const mx=Math.max(1,...cnt);
+    $app.innerHTML=`<div class="topbar"><span>${H.qi+1} de ${QUIZ.questions.length}</span><span>PIN ${H.pin}</span></div>
+      <div class="qhead">${esc(q.q)}</div>
+      <div class="bars">${cnt.map((c,i)=>`<div class="bar ${q.ok.includes(i)?'':'dim'}"><div class="fill" style="height:${8+82*c/mx}%;background:${COLORS[i]}"></div><div class="lbl" style="background:${COLORS[i]}">${SHAPES[i]} ${c}${q.ok.includes(i)?' ✔':''}</div></div>`).join('')}</div>
+      ${optsHTML(q,i=>!q.ok.includes(i),i=>q.ok.includes(i))}
+      <div class="hostnav"><button class="btn white" id="next">Siguiente</button></div>`;
+    document.getElementById('next').onclick=hostAdvance;
+  } else if(H.phase==='lb'){
+    const rk=ranking().slice(0,5);
+    $app.innerHTML=`<div class="title">Clasificación</div>
+      <div class="lb">${rk.map(([k,s],i)=>`<div class="lbrow" style="animation-delay:${i*.08}s"><span>${esc(s.name)}</span><span>${s.score}</span></div>`).join('')||'<div class="muted">Sin jugadores</div>'}</div>
+      <div class="hostnav" style="margin-top:auto"><button class="btn white" id="next">Siguiente</button></div>`;
+    document.getElementById('next').onclick=hostAdvance;
+  } else if(H.phase==='end'){
+    const rk=ranking();
+    const p=i=>rk[i]?rk[i][1]:null;
+    const col=(i,h,m)=>p(i)?`<div class="pcol"><div class="pname" style="animation-delay:${(2-i)*.6}s">${esc(p(i).name)}</div><div class="pblock" style="height:${h}vh"><div class="medal">${m}</div><div class="pts">${p(i).score} pts</div></div></div>`:'<div class="pcol"></div>';
+    $app.innerHTML=`<div class="title">${esc(QUIZ.title)}</div>
+      <div class="podium">${col(1,30,'🥈')}${col(0,40,'🥇')}${col(2,22,'🥉')}</div>
+      <div class="lb" style="max-width:600px">${rk.slice(3,20).map(([k,s],i)=>`<div class="lbrow" style="background:#fff;font-size:18px;padding:10px 16px"><span>${i+4}. ${esc(s.name)}</span><span>${s.score}</span></div>`).join('')}</div>
+      <div class="hostnav" style="justify-content:center"><button class="btn white" id="again">Jugar otra vez</button></div>`;
+    document.getElementById('again').onclick=()=>{H.phase='lobby';H.qi=-1;for(const s of H.scores.values()){s.score=0;s.streak=0;s.last=null;}renderHost();broadcast(true);};
+  }
+}
+
+/* ============ JUGADOR ============ */
+const P={st:null,ansQ:-1,ansC:-1,deadline:0,key:'',connected:true};
+async function playerJoin(pin,name){
+  P.name=name; P.pin=pin;
+  $app.innerHTML=`<div class="center"><div class="spinner"></div><div class="muted">Buscando la partida ${esc(pin)}…</div></div>`;
+  const fail=msg=>{ if(P.st) return; $app.innerHTML=`<div class="center"><div class="title" style="font-size:26px">${msg}</div><button class="btn white" id="bk">Volver</button></div>`; document.getElementById('bk').onclick=()=>location.reload(); };
+  try{
+    P.tx=await playerTransport(pin,{
+      onState:st=>{ if(!st||typeof st!=='object') return; if(st.pin&&st.pin!==pin) return; P.st=st; if(st.ph==='q'&&typeof st.rem==='number') P.deadline=now()+st.rem; renderPlayer(); },
+      onConn:c=>{P.connected=c;},
+      onFail:()=>fail('No encuentro esa partida. Revisa el PIN.')
+    });
+  }catch(e){ fail('No se pudo conectar.'); return; }
+  P.tx.set({name, ans:null});
+  setTimeout(()=>fail('No encuentro esa partida. Revisa el PIN.'),12000);
+  clearInterval(P.tick); P.tick=setInterval(()=>{const el=document.getElementById('ptmr'); if(el) el.textContent=Math.ceil(Math.max(0,P.deadline-now())/1000);},250);
+}
+function playerAnswer(i){
+  const st=P.st; if(!st||st.ph!=='q') return;
+  P.ansQ=st.qi; P.ansC=i;
+  P.tx.set({ans:{q:st.qi,c:i}});
+  P.key=''; renderPlayer();
+}
+function renderPlayer(){
+  const st=P.st; if(!st) return;
+  const me=st.me&&P.tx.id()?st.me[P.tx.id()]:null;
+  const answered=st.ph==='q'&&(P.ansQ===st.qi||(me&&me[5]===1));
+  const key=[st.ph,st.qi,answered,!!me,me&&me[1],me&&me[2]].join('|');
+  if(key===P.key) return; P.key=key;
+  const bar=`<div class="topbar"><span>${esc(me?me[0]:P.name)}</span>${st.qi>=0&&st.ph!=='lobby'&&st.ph!=='end'?`<span>${st.qi+1}/${st.qn}</span>`:''}<span class="pill">${me?me[1]:0}</span></div>`;
+  if(!me){ $app.innerHTML=bar+`<div class="center"><div class="spinner"></div><div class="muted">Entrando…</div></div>`; return; }
+  const pos=me[2], tot=me[7];
+  if(st.ph==='lobby'){
+    $app.innerHTML=bar+`<div class="center"><div class="title">¡Ya estás dentro!</div><div class="muted" style="font-size:18px">¿Ves tu apodo en la pantalla?</div></div>`;
+  } else if(st.ph==='pre'){
+    $app.innerHTML=bar+`<div class="center"><div class="muted">Pregunta ${st.qi+1}</div><div class="spinner"></div><div class="title" style="font-size:28px">¡Prepárate!</div></div>`;
+  } else if(st.ph==='q'){
+    if(answered){
+      $app.innerHTML=bar+`<div class="center"><div class="spinner"></div><div class="title" style="font-size:28px">Respuesta enviada</div><div class="muted">¿Serás el más rápido?</div></div>`;
+    } else {
+      const n=st.q?st.q.o.length:4;
+      $app.innerHTML=bar+`<div style="padding:10px 14px;font-weight:800;text-align:center;display:flex;gap:10px;align-items:center;justify-content:center"><span class="pill" id="ptmr" style="min-width:42px">${Math.ceil(Math.max(0,P.deadline-now())/1000)}</span><span>${st.q&&st.q.t?esc(st.q.t):''}</span></div>
+        <div class="pgrid">${Array.from({length:n},(_,i)=>`<button class="pbtn c${i}" data-i="${i}">${SHAPES[i]}${st.q&&st.q.o[i]?`<span>${esc(st.q.o[i])}</span>`:''}</button>`).join('')}</div>`;
+      $app.querySelectorAll('.pbtn').forEach(b=>b.onclick=()=>playerAnswer(+b.dataset.i));
+    }
+  } else if(st.ph==='res'){
+    const ok=me[4], pts=me[3];
+    if(ok===1) $app.innerHTML=bar+`<div class="feedback ok"><h2>¡Correcto!</h2><div class="big">✔</div><div class="ptsbox">+ ${pts}</div>${me[6]>1?`<div>🔥 Racha de ${me[6]}</div>`:''}<div>Vas en el puesto <b>${pos}</b> de ${tot}</div></div>`;
+    else $app.innerHTML=bar+`<div class="feedback bad"><h2>${ok===0?'Incorrecto':'¡Se acabó el tiempo!'}</h2><div class="big">✖</div>${st.ok&&st.q&&st.q.o[st.ok[0]]?`<div>Era: <b>${esc(st.q.o[st.ok[0]])}</b></div>`:''}<div>Vas en el puesto <b>${pos}</b> de ${tot}</div></div>`;
+  } else if(st.ph==='lb'){
+    $app.innerHTML=bar+`<div class="center"><div class="muted">Clasificación</div><div class="title">Puesto ${pos}</div><div class="ptsbox">${me[1]} puntos</div></div>`;
+  } else if(st.ph==='end'){
+    const medal=pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':'🎉';
+    $app.innerHTML=bar+`<div class="center"><div style="font-size:80px">${medal}</div><div class="title">Puesto ${pos} de ${tot}</div><div class="ptsbox">${me[1]} puntos</div></div>`;
+  }
+}
+
+home();
+</script>
+</body>
+</html>
